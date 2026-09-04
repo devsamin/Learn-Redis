@@ -15,9 +15,10 @@ app.get("/", (req, res) => {
     message: "Hello I Am Redis!",
   });
 });
-
+// Cache user data in Redis when a new user is created
 app.post("/users/create", async (req, res) => {
   const { name, email, password } = req.body;
+  await redis.del("user:all"); // Clear the cache when a new user is created
   try {
     const user = await User.create({ name, email, password });
     return res.status(201).json(user);
@@ -38,6 +39,14 @@ app.get("/users/get", async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 });
+app.get("/users/get-all", async (req, res) => {
+  try {
+    const users = await User.find({});
+    return res.status(200).json(users);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+});
 
 app.get("/users/get-with-redis", async (req, res) => {
   const cashed = await redis.get("user:all");
@@ -47,6 +56,27 @@ app.get("/users/get-with-redis", async (req, res) => {
   const user = await User.find({});
   await redis.set("user:all", JSON.stringify(user));
   return res.status(200).json(user);
+});
+
+// OTP storage in Redis
+app.post("/send-otp", async (req, res) => {
+  const { email } = req.body;
+  const otp = Math.floor(100000 + Math.random() * 900000).toString(); // Generate a 6-digit OTP
+  await redis.set(`otp:${email}`, otp, "EX", 40); // Store OTP with a 40-second expiration
+  return res.status(200).json({ message: "OTP sent successfully", otp }); // In a real application, you would send the OTP via email or SMS
+});
+
+app.post("/verify-otp", async (req, res) => {
+  const { email, otp } = req.body;
+  const cashedOtp = await redis.get(`otp:${email}`);
+  if (!cashedOtp) {
+    return res.status(400).json({ message: "OTP expired or not found" });
+  }
+  if (cashedOtp !== otp) {
+    return res.status(400).json({ message: "Invalid OTP" });
+  }
+  await redis.del(`otp:${email}`); // Delete OTP after successful verification
+  return res.status(200).json({ message: "OTP verified successfully" });
 });
 
 const startServer = async () => {

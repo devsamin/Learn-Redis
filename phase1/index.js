@@ -3,13 +3,14 @@ import dotenv from "dotenv";
 import connectDB from "./lib/db.js";
 import User, { createUsersTable } from "./model/user.model.js"; // Import both default and named exports
 import Redis from "ioredis";
+import { ratelimit } from "./middleware/ratelimit.js";
 dotenv.config();
 
 const app = express();
 app.use(express.json());
 
 const port = process.env.PORT || 5000;
-const redis = new Redis(process.env.REDIS_URL);
+export const redis = new Redis(process.env.REDIS_URL);
 app.get("/", (req, res) => {
   return res.status(200).json({
     message: "Hello I Am Redis!",
@@ -39,7 +40,7 @@ app.get("/users/get", async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 });
-app.get("/users/get-all", async (req, res) => {
+app.get("/users/get-all", ratelimit, async (req, res) => {
   try {
     const users = await User.find({});
     return res.status(200).json(users);

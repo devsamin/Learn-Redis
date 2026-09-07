@@ -4,6 +4,7 @@ import connectDB from "./lib/db.js";
 import User, { createUsersTable } from "./model/user.model.js"; // Import both default and named exports
 import Redis from "ioredis";
 import { ratelimit } from "./middleware/ratelimit.js";
+import { sendMail } from "./lib/sendMail.js";
 dotenv.config();
 
 const app = express();
@@ -22,6 +23,7 @@ app.post("/users/create", async (req, res) => {
   await redis.del("user:all"); // Clear the cache when a new user is created
   try {
     const user = await User.create({ name, email, password });
+    await sendMail();
     return res.status(201).json(user);
   } catch (error) {
     return res.status(500).json({ message: error.message });

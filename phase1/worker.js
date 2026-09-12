@@ -1,6 +1,6 @@
 import { Queue, Worker } from "bullmq";
 import Redis from "ioredis";
-import { sendMail } from "./lib/sendMail";
+import { sendMail } from "./lib/sendMail.js";
 
 const connection = new Redis("redis://localhost:6379", {
   maxRetriesPerRequest: null,
